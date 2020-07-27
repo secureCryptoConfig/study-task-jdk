@@ -1,9 +1,11 @@
 package main;
 
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
@@ -20,6 +22,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.apache.commons.collections4.map.HashedMap;
@@ -53,6 +56,9 @@ public class Server extends Thread {
 
 	// all registered clients with their Keys
 	List<byte[]> clients = Collections.synchronizedList(new ArrayList<byte[]>());
+
+	// Nonce for encryption
+	static byte[] nonce = new byte[32];
 
 	/**
 	 * Server retrieves key for later signature validation from client
@@ -89,6 +95,7 @@ public class Server extends Thread {
 		byte[] publicKey = clients.get(clientID);
 		PublicKey key = null;
 		try {
+
 			key = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(publicKey));
 		} catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
 			e.printStackTrace();
@@ -103,7 +110,7 @@ public class Server extends Thread {
 			sig.initVerify(key);
 			sig.update(order);
 			resultValidation = sig.verify(signature);
-			
+
 		} catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException e) {
 			e.printStackTrace();
 		}
@@ -127,19 +134,21 @@ public class Server extends Thread {
 
 		// TODO Perform a symmetric encryption of the given order with the already
 		// defined "key". Store the chiphertext in the already defined variable
-		// "encryptedOrder"
+		// "encryptedOrder". If needed a random byte[] "nonce" is created by server start.
 		try {
 			Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-			cipher.init(Cipher.ENCRYPT_MODE, key);
+			GCMParameterSpec spec = new GCMParameterSpec(16 * 8, nonce);
+			cipher.init(Cipher.ENCRYPT_MODE, key, spec);
 
 			encryptedOrder = cipher.doFinal(order);
-		} catch (NoSuchAlgorithmException | InvalidKeyException | NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException e) {
+		} catch (NoSuchAlgorithmException | InvalidKeyException | NoSuchPaddingException | IllegalBlockSizeException
+				| BadPaddingException | InvalidAlgorithmParameterException e) {
 			e.printStackTrace();
 		}
 
-			// Add encrypted order in queue of client
-			return queues.get(clientId).add(encryptedOrder);
-		
+		// Add encrypted order in queue of client
+		return queues.get(clientId).add(encryptedOrder);
+
 	}
 
 	/**
@@ -155,16 +164,19 @@ public class Server extends Thread {
 		String decryptedOrder = null;
 
 		// TODO Perform a symmetric decryption of the given encryptedOrder with the
-		// already defined "key". Store the plaintext in the already defined String variable
+		// already defined "key". Store the plaintext in the already defined String
+		// variable
 		// "decryptedOrder"
-		
+
 		try {
 			Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-			cipher.init(Cipher.DECRYPT_MODE, key);
+			GCMParameterSpec spec = new GCMParameterSpec(16 * 8, nonce);
+			cipher.init(Cipher.DECRYPT_MODE, key, spec);
 			byte[] byteCipher = cipher.doFinal(encryptedOrder);
-		    decryptedOrder = Base64.getEncoder().encodeToString(byteCipher);
+			decryptedOrder = Base64.getEncoder().encodeToString(byteCipher);
 			return decryptedOrder;
-		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException e) {
+		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IllegalBlockSizeException
+				| BadPaddingException | InvalidAlgorithmParameterException e) {
 			e.printStackTrace();
 			return decryptedOrder;
 		}
@@ -223,6 +235,18 @@ public class Server extends Thread {
 			}
 		default:
 			return new String("{\"Failure\"}");
+		}
+	}
+
+	/**
+	 * Generating Nonce
+	 */
+	protected static void generateNonce() {
+		try {
+			SecureRandom random = SecureRandom.getInstanceStrong();
+			random.nextBytes(nonce);
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
 		}
 	}
 
