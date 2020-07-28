@@ -99,20 +99,10 @@ public class Server extends Thread {
 			e.printStackTrace();
 		}
 
-		// TODO Perform validation of the given signature with
-		// the corresponding public key of the client. Store the result in
-		// 'resultValidation'
+		// TODO Perform validation of the given "signature" with the previous defined key of the client. 
+		// Return if the validation was successful with the defined variable "resultValidation"
 
-		try {
-			Signature sig = Signature.getInstance("SHA512withRSA");
-			sig.initVerify(key);
-			sig.update(order);
-			resultValidation = sig.verify(signature);
-
-		} catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException e) {
-			e.printStackTrace();
-		}
-
+		
 		return resultValidation;
 
 	}
@@ -130,18 +120,11 @@ public class Server extends Thread {
 		byte[] encryptedOrder = null;
 		SecretKey key = new SecretKeySpec(masterKey, 0, masterKey.length, "AES");
 
-		// TODO Perform a symmetric encryption of the given order with the already
+		// TODO Perform a symmetric encryption of the given "order" with the already
 		// defined "key". Store the chiphertext in the already defined variable
 		// "encryptedOrder".
-		try {
-			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-			cipher.init(Cipher.ENCRYPT_MODE, key);
-
-			encryptedOrder = cipher.doFinal(order);
-		} catch (NoSuchAlgorithmException | InvalidKeyException | NoSuchPaddingException | IllegalBlockSizeException
-				| BadPaddingException e) {
-			e.printStackTrace();
-		}
+		
+		
 
 		// Add encrypted order in queue of client
 		return queues.get(clientId).add(encryptedOrder);
@@ -160,21 +143,11 @@ public class Server extends Thread {
 		SecretKey key = new SecretKeySpec(masterKey, 0, masterKey.length, "AES");
 		String decryptedOrder = null;
 
-		// TODO Perform a symmetric decryption of the given encryptedOrder with the
+		// TODO Perform a symmetric decryption of the given "encryptedOrder" with the
 		// already defined "key". Store the plaintext in the already defined String
 		// variable "decryptedOrder"
 
-		try {
-			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-			cipher.init(Cipher.DECRYPT_MODE, key);
-			byte[] byteCipher = cipher.doFinal(encryptedOrder);
-			decryptedOrder = Base64.getEncoder().encodeToString(byteCipher);
-			return decryptedOrder;
-		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IllegalBlockSizeException
-				| BadPaddingException e) {
-			e.printStackTrace();
-			return decryptedOrder;
-		}
+		return decryptedOrder;
 	}
 
 	/**
@@ -216,8 +189,6 @@ public class Server extends Thread {
 				String decrypted = "";
 				decrypted = decryptOrder(encryptedOrder);
 				answer = answer + Message.createServerSendOrdersMessage(decrypted) + "\n";
-				// TODO change to correct Message wrap (right now its only concatenated
-				// messages)
 			}
 			return answer;
 		case BuyStock:

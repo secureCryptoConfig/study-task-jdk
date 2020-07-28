@@ -80,18 +80,9 @@ public class Client implements Runnable {
 		} catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		}
-		// TODO: Perform signing of the parameter order with the given "key"
+		// TODO: Perform signing of the parameter "order" with the previous defined "key"
 
-		Signature signature;
-		try {
-			signature = Signature.getInstance("SHA512withRSA");
-			signature.initSign(key.getPrivate());
-			signature.update(order.getBytes());
-			return signature.sign();
-		} catch (InvalidKeyException | NoSuchAlgorithmException | SignatureException e) {
-			e.printStackTrace();
-			return null;
-		}
+		return null;
 
 	}
 
