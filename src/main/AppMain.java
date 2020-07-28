@@ -28,8 +28,7 @@ public class AppMain {
 		
 		//Key for later Server encryption is generated
 		Server.masterKey = Server.generateKey();
-		//Nonce is generated
-		Server.generateNonce();
+		
 		logger.info("Starting server");
 		
 		//Server gets started

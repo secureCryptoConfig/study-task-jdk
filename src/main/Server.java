@@ -57,8 +57,6 @@ public class Server extends Thread {
 	// all registered clients with their Keys
 	List<byte[]> clients = Collections.synchronizedList(new ArrayList<byte[]>());
 
-	// Nonce for encryption
-	static byte[] nonce = new byte[32];
 
 	/**
 	 * Server retrieves key for later signature validation from client
@@ -134,15 +132,14 @@ public class Server extends Thread {
 
 		// TODO Perform a symmetric encryption of the given order with the already
 		// defined "key". Store the chiphertext in the already defined variable
-		// "encryptedOrder". If needed a random byte[] "nonce" is created by server start.
+		// "encryptedOrder".
 		try {
-			Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-			GCMParameterSpec spec = new GCMParameterSpec(16 * 8, nonce);
-			cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+			cipher.init(Cipher.ENCRYPT_MODE, key);
 
 			encryptedOrder = cipher.doFinal(order);
 		} catch (NoSuchAlgorithmException | InvalidKeyException | NoSuchPaddingException | IllegalBlockSizeException
-				| BadPaddingException | InvalidAlgorithmParameterException e) {
+				| BadPaddingException e) {
 			e.printStackTrace();
 		}
 
@@ -165,18 +162,16 @@ public class Server extends Thread {
 
 		// TODO Perform a symmetric decryption of the given encryptedOrder with the
 		// already defined "key". Store the plaintext in the already defined String
-		// variable
-		// "decryptedOrder"
+		// variable "decryptedOrder"
 
 		try {
-			Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-			GCMParameterSpec spec = new GCMParameterSpec(16 * 8, nonce);
-			cipher.init(Cipher.DECRYPT_MODE, key, spec);
+			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+			cipher.init(Cipher.DECRYPT_MODE, key);
 			byte[] byteCipher = cipher.doFinal(encryptedOrder);
 			decryptedOrder = Base64.getEncoder().encodeToString(byteCipher);
 			return decryptedOrder;
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IllegalBlockSizeException
-				| BadPaddingException | InvalidAlgorithmParameterException e) {
+				| BadPaddingException e) {
 			e.printStackTrace();
 			return decryptedOrder;
 		}
@@ -238,17 +233,6 @@ public class Server extends Thread {
 		}
 	}
 
-	/**
-	 * Generating Nonce
-	 */
-	protected static void generateNonce() {
-		try {
-			SecureRandom random = SecureRandom.getInstanceStrong();
-			random.nextBytes(nonce);
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		}
-	}
 
 	/**
 	 * Processes incoming orders. Values of messages are read out and validation
