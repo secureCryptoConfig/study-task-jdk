@@ -121,7 +121,7 @@ public class Server extends Thread {
 		SecretKey key = new SecretKeySpec(masterKey, 0, masterKey.length, "AES");
 
 		// TODO Perform a symmetric encryption of the given "order" with the already
-		// defined "key". Store the chiphertext in the already defined variable
+		// defined "key". Store the ciphertext in the already defined variable
 		// "encryptedOrder".
 		
 		
