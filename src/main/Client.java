@@ -13,9 +13,10 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
-import java.util.Random;
-
+import java.util.Base64;
 import com.fasterxml.jackson.core.JsonProcessingException;
+
+import main.Message.MessageType;
 
 /**
  * Class that simulates the behavior of a Client that interacts with a
@@ -74,15 +75,15 @@ public class Client implements Runnable {
 
 		KeyPair key = null;
 		try {
-			PublicKey  keyPublic = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(publicKey));
+			PublicKey keyPublic = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(publicKey));
 			PrivateKey keyPrivate = KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(privateKey));
 			key = new KeyPair(keyPublic, keyPrivate);
 		} catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		}
-		// TODO: Perform signing of the parameter "order" with the previous defined "key"
+		// TODO: Perform signing of the parameter order with the given "key"
 
-		return null;
+		return new byte[0];
 
 	}
 
@@ -99,8 +100,7 @@ public class Client implements Runnable {
 	 * @throws CoseException
 	 * @throws IllegalStateException
 	 */
-	public static Client generateNewClient(Server server)
-			throws NoSuchAlgorithmException, IllegalStateException {
+	public static Client generateNewClient(Server server) throws NoSuchAlgorithmException, IllegalStateException {
 		KeyPair key = null;
 
 		KeyPairGenerator keyPairGenerator;
@@ -115,15 +115,15 @@ public class Client implements Runnable {
 			e.printStackTrace();
 		}
 
-			byte[] publicKey = key.getPublic().getEncoded();
+		byte[] publicKey = key.getPublic().getEncoded();
 
-			int clientID = server.registerClient(publicKey);
-			if (clientID == -1) {
-				throw new IllegalStateException("server does not seem to accept the client registration!");
-			}
+		int clientID = server.registerClient(publicKey);
+		if (clientID == -1) {
+			throw new IllegalStateException("server does not seem to accept the client registration!");
+		}
 
-			Client c = new Client(clientID, key.getPublic().getEncoded(), key.getPrivate().getEncoded(), server);
-			return c;
+		Client c = new Client(clientID, key.getPublic().getEncoded(), key.getPrivate().getEncoded(), server);
+		return c;
 
 	}
 
@@ -135,29 +135,33 @@ public class Client implements Runnable {
 	 * @throws NumberFormatException
 	 * @throws JsonProcessingException
 	 */
-	private static String generateRandomMessage() throws NumberFormatException, JsonProcessingException {
-		int random = new Random().nextInt(3);
-		if (random == 0) {
+	private static String generateRandomMessage(MessageType type)
+			throws NumberFormatException, JsonProcessingException {
+
+		switch (type) {
+		case BuyStock:
 			return Message.createBuyStockMessage(generateRandomString(12), generateRandomNumber(3));
-		} else if (random == 1) {
+		case SellStock:
 			return Message.createSellStockMessage(generateRandomString(12), generateRandomNumber(10));
-		} else {
+		case GetOrders:
+			return Message.createGetOrdersMessage();
+		default:
 			return Message.createGetOrdersMessage();
 		}
-
 	}
 
 	/**
 	 * Sending of signed message for buying/selling stock to server. Server sends a
 	 * response. Message is accepted if signature can be validated.
 	 * 
-	 * @throws CoseException
 	 * @throws JsonProcessingException
 	 */
-	private void sendMessage(String order) throws JsonProcessingException {
-
-		String signedMessage = SignedMessage.createSignedMessage(this.clientID, order,
-				signMessage(order, publicKey, privateKey));
+	private void sendMessage(String message) throws JsonProcessingException {
+		p("creating signature for message: " + message);
+		byte[] signature = signMessage(message, publicKey, privateKey);
+		p("signature is (base64 encoded): "
+				+ (signature.length > 0 ? Base64.getEncoder().encodeToString(signature) : "null"));
+		String signedMessage = SignedMessage.createSignedMessage(this.clientID, message, signature);
 
 		p("sending to server: " + signedMessage);
 		String result = server.acceptMessage(signedMessage);
@@ -217,17 +221,17 @@ public class Client implements Runnable {
 
 	@Override
 	public void run() {
-		while (true) {
-			try {
-				Thread.sleep((long) (Math.random() * sendFrequency + 1));
-				sendMessage(generateRandomMessage());
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			} catch (NumberFormatException e) {
-				e.printStackTrace();
-			} catch (JsonProcessingException e) {
-				e.printStackTrace();
-			}
+		try {
+			Thread.sleep((long) (Math.random() * sendFrequency + 1));
+			sendMessage(generateRandomMessage(MessageType.BuyStock));
+			sendMessage(generateRandomMessage(MessageType.SellStock));
+			sendMessage(generateRandomMessage(MessageType.GetOrders));
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} catch (NumberFormatException e) {
+			e.printStackTrace();
+		} catch (JsonProcessingException e) {
+			e.printStackTrace();
 		}
 
 	}

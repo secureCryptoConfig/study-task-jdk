@@ -1,5 +1,6 @@
 package main;
 
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
@@ -57,7 +58,6 @@ public class Server extends Thread {
 	// all registered clients with their Keys
 	List<byte[]> clients = Collections.synchronizedList(new ArrayList<byte[]>());
 
-
 	/**
 	 * Server retrieves key for later signature validation from client
 	 * 
@@ -99,10 +99,10 @@ public class Server extends Thread {
 			e.printStackTrace();
 		}
 
-		// TODO Perform validation of the given "signature" with the previous defined key of the client. 
-		// Return if the validation was successful with the defined variable "resultValidation"
+		// TODO Perform validation of the given signature with
+		// the corresponding public key of the client. Store the result in
+		// 'resultValidation'
 
-		
 		return resultValidation;
 
 	}
@@ -118,17 +118,23 @@ public class Server extends Thread {
 	private boolean saveOrderEncrypted(byte[] order, int clientId) {
 
 		byte[] encryptedOrder = null;
-		SecretKey key = new SecretKeySpec(masterKey, 0, masterKey.length, "AES");
+		SecretKey key = new SecretKeySpec(masterKey, "AES");
 
-		// TODO Perform a symmetric encryption of the given "order" with the already
+		// TODO Perform a symmetric encryption of the given order with the already
 		// defined "key". Store the ciphertext in the already defined variable
 		// "encryptedOrder".
-		
-		
 
+		
+		
+		
+		p("encryptedOrder is (base64 encoded): "
+				+ (encryptedOrder != null ? Base64.getEncoder().encodeToString(encryptedOrder) : "null"));
 		// Add encrypted order in queue of client
-		return queues.get(clientId).add(encryptedOrder);
-
+		if (encryptedOrder == null) {
+			return false;
+		} else {
+			return queues.get(clientId).add(encryptedOrder);
+		}
 	}
 
 	/**
@@ -143,7 +149,7 @@ public class Server extends Thread {
 		SecretKey key = new SecretKeySpec(masterKey, 0, masterKey.length, "AES");
 		String decryptedOrder = null;
 
-		// TODO Perform a symmetric decryption of the given "encryptedOrder" with the
+		// TODO Perform a symmetric decryption of the given encryptedOrder with the
 		// already defined "key". Store the plaintext in the already defined String
 		// variable "decryptedOrder"
 
@@ -175,7 +181,6 @@ public class Server extends Thread {
 	 * @param isCorrectMessage shows if message signature was correct
 	 * @param signedMessage    message sent from the client to server
 	 * @return
-	 * @throws CoseException
 	 * @throws JsonProcessingException
 	 */
 	private String parseMessage(MessageType type, int clientId, boolean isCorrectMessage, SignedMessage signedMessage)
@@ -184,6 +189,10 @@ public class Server extends Thread {
 		case GetOrders:
 			CircularFifoQueue<byte[]> q = queues.get(clientId);
 			String answer = "";
+
+			if (q.size() == 0) {
+				return "no orders in queue";
+			}
 			for (int i = 0; i < q.size(); i++) {
 				byte[] encryptedOrder = q.get(i);
 				String decrypted = "";
@@ -194,16 +203,15 @@ public class Server extends Thread {
 		case BuyStock:
 		case SellStock:
 			boolean encryptionResult = saveOrderEncrypted(signedMessage.getContent().getBytes(), clientId);
-			if (encryptionResult == true) {
+			if (encryptionResult) {
 				return Message.createServerResponseMessage(isCorrectMessage);
 			} else {
-				return new String("{\"Failure during encryption\"}");
+				return "{\"Failure during encryption\"}";
 			}
 		default:
 			return new String("{\"Failure\"}");
 		}
 	}
-
 
 	/**
 	 * Processes incoming orders. Values of messages are read out and validation
@@ -226,8 +234,9 @@ public class Server extends Thread {
 			byte[] signature = signedMessage.getSignature();
 
 			isCorrectMessage = checkSignature(clientId, signedMessage.getContent().getBytes(), signature);
-
+			p("message signature is " + (isCorrectMessage ? "valid" : "not valid"));
 			if (isCorrectMessage == true) {
+
 				Message theMessage = mapper.readValue(signedMessage.getContent(), Message.class);
 				type = theMessage.getMessageType();
 
@@ -256,14 +265,15 @@ public class Server extends Thread {
 
 	@Override
 	public void run() {
-		while (true) {
-			p("processing orders");
-			try {
-				Thread.sleep((long) (Math.random() * sendFrequency + 1));
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+		// while (true) {
+		p("Server started");
+		// p("processing orders");
+		try {
+			Thread.sleep((long) (Math.random() * sendFrequency + 1));
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
+		// }
 	}
 
 }

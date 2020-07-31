@@ -2,8 +2,12 @@ package main;
 
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 
 
@@ -27,29 +31,48 @@ public class AppMain {
 	public static void main(String[] args) {
 		
 		//Key for later Server encryption is generated
-		Server.masterKey = Server.generateKey();
-		
-		logger.info("Starting server");
-		
-		//Server gets started
-		Server server = new Server();
-		ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
-		executor.submit(server);
-		//Clients are registered by the server
-		try {
-			for (int i = 0; i < maxClients; i++) {
-				clients.add(Client.generateNewClient(server));
-			}
+				Server.masterKey = Server.generateKey();
+				logger.info("Starting server");
+				
+				//Server gets started
+		        Server server = new Server();
+		        ArrayList<Future> futureTasks = new ArrayList<Future>();
 
-		} catch (IllegalStateException | NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		}
+				ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
+				futureTasks.add(executor.submit(server));
+				//Clients are registered by the server
+				try {
+					for (int i = 0; i < maxClients; i++) {
+						clients.add(Client.generateNewClient(server));
+					}
 
-		//Clients are started 
-		for (Client s : clients) {
-			executor.submit(s);
-		}
+				} catch (IllegalStateException | NoSuchAlgorithmException e) {
+					e.printStackTrace();
+				}
 
+				//Clients are started 
+				for (Client c : clients) {
+					futureTasks.add(executor.submit(c));
+		        }
+		        
+		        
+
+		        for(Future t : futureTasks) {
+		            Throwable throwable = null;
+		            try {
+		                Object result = ((Future<?>) t).get();
+		            } catch (CancellationException ce) {
+		                throwable = ce;
+		            } catch (ExecutionException ee) {
+		                throwable = ee.getCause();
+		            } catch (InterruptedException ie) {
+		                Thread.currentThread().interrupt(); // ignore/reset
+		            }
+		            if (throwable != null) {
+		                System.out.println(throwable);
+		            }
+		        }
+		        
 	}
 
 	/**
