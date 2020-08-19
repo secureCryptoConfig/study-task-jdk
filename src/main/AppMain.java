@@ -14,7 +14,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 /**
  * Starting point for client/server simulation. 
  * Defined number of clients are created, registered by the server and then started to sent 
- * automatically created messages to the server. Also the server gets started to be able
+ * automatically created messages of different types to the server. Also the server gets started to be able
  * to retrieve clients orders
  *
  */
